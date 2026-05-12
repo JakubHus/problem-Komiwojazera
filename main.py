@@ -55,6 +55,25 @@ cities = [
     ("Ostrów Wielkopolski", 51.6550, 17.8069)
 ]
 
+
+def fitness(route, distance_matrix):
+    """
+    Oblicza całkowitą długość trasy w problemie Komiwojażera
+
+    Parametry:
+    route:
+        Permutacja indeksów miast np. [0, 1, 2, 3, 4]
+    distance_matrix:
+        Macierz odległości euklidesowej między miastami
+
+    Zwraca:
+        Całkowity koszt trasy
+    """
+    score = distance_matrix[route[-1]][route[0]]
+    for i in range(len(route) - 1):
+        score += distance_matrix[route[i]][route[i + 1]]
+
+
 # Wyciągnięcie samych współrzędnych
 coords = np.array([(lat, lon) for _, lat, lon in cities])
 
