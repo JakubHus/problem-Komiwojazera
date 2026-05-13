@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.spatial.distance import cdist
+import random
 
 # Miasta + ich współrzędne
 cities = [
@@ -55,6 +56,14 @@ cities = [
     ("Ostrów Wielkopolski", 51.6550, 17.8069)
 ]
 
+# Inicjalizacja parametrów populacji
+N = len(cities)  # ilość miast
+population_size = 100  # liczba chromosomów (tras) w każdej iteracji
+p_crossing = 0.9  # prawdopodobieństwo krzyżowania
+p_mutation = 0.05  # prawodpodobieństwo mutacji
+max_generations = 300  # maksymalna liczba generacji
+stop_after = 50  # warunek stopu - liczba generacji bez poprawy wyniku, po których algorytm kończy działanie
+
 
 def fitness(route, distance_matrix):
     """
@@ -79,3 +88,15 @@ coords = np.array([(lat, lon) for _, lat, lon in cities])
 
 # Macierz odległości euklidesowej
 distance_matrix = cdist(coords, coords, metric="euclidean")
+
+population = []
+rating = []
+
+# Tworzenie tras i obliczanie ich funkcji jakości
+for i in range(population_size):
+    ch = random.sample(range(N), N)
+    population.append(ch)
+
+    quality = fitness(ch, distance_matrix)
+    rating.append(quality)
+
