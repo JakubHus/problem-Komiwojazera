@@ -65,22 +65,122 @@ max_generations = 300  # maksymalna liczba generacji
 stop_after = 50  # warunek stopu - liczba generacji bez poprawy wyniku, po których algorytm kończy działanie
 
 
-def fitness(route, distance_matrix):
+def fitness(route, matrix):
     """
     Oblicza całkowitą długość trasy w problemie Komiwojażera
 
     Parametry:
     route:
         Permutacja indeksów miast np. [0, 1, 2, 3, 4]
-    distance_matrix:
+    matrix:
         Macierz odległości euklidesowej między miastami
 
     Zwraca:
         Całkowity koszt trasy
     """
-    score = distance_matrix[route[-1]][route[0]]
+    score = matrix[route[-1]][route[0]]
     for i in range(len(route) - 1):
-        score += distance_matrix[route[i]][route[i + 1]]
+        score += matrix[route[i]][route[i + 1]]
+
+    return score
+
+
+def crossing(parent1, parent2):
+    """
+    Wykonuje krzyżowanie - tworzy nowe dziecko, które:
+    - dziedziczy fragment chromosomu z parent1
+    - uzupełnia resztę indeksów z parent2 bez powtórzeń
+
+    Parametry:
+    parent1:
+        Pierwszy rodzic
+    parent2:
+        Drugi rodzic
+
+    Zwraca:
+        Dziecko, czyli chromosom będący skrzyżowaniem obydwu rodziców
+    """
+
+    N = len(parent1)
+    start, end = sorted(random.sample(range(N), 2))
+
+    child = [None] * N
+    child[start:end] = parent1[start:end]
+
+    used = set(child[start:end])
+
+    i = end
+
+    for g in parent2:
+        if g not in used:
+            if i == N:
+                i = 0
+
+            child[i] = g
+            i += 1
+
+    return child
+
+
+def mutation(child, p):
+    """
+    Mutacja chromosomu - jeśli wylosowana wartość jest mniejsza od p_mutation,
+    zamienia miejscami dwa losowe miasta w chromosomie.
+
+    Parametry:
+    child:
+        Chromosom
+    p:
+        Prawdopodobieństwo mutacji
+
+    Zwraca:
+        Zmutowany lub niezmieniony chromosom
+    """
+
+    if random.random() < p:
+        N = len(child)
+        i, j = random.sample(range(N), 2)
+
+        child[i], child[j] = child[j], child[i]
+
+    return child
+
+
+def succession(rating, population, child_rating, child_population, population_size):
+    """
+    Tworzy nowe pokolenie metodą sukcesji. Zachowuje najlepszego osobnika z poprzedniej populacji,
+    a pozostałe miejsca w nowej populacji wypełnia najlepszymi potomkami posortowanymi według wartości
+    funkcji jakości.
+
+    Parametry:
+    rating:
+        Lista wartości funkcji jakości dla osobników w starej populacji.
+    population:
+        Lista chromosomów reprezentujących poprzednie pokolenie.
+    child_rating:
+        Lista wartości funkcji jakości dla potomków.
+    child_population:
+        Lista chromosomów potomków po krzyżowaniu i mutacji.
+    population_size:
+        Liczebność nowej populacji.
+
+    Zwraca:
+        Lista chromosomów reprezentujących nowe pokolenie.
+        Zawiera najlepszego osobnika ze starej populacji
+        oraz population_size - 1 najlepszych potomków.
+    """
+
+    best_parent_id = np.argmin(rating)
+    best_parent = population[best_parent_id]
+
+    merge = list(zip(child_rating, child_population))
+    sorted_merge = sorted(merge)
+
+    best_population = [child for _, child in sorted_merge[:population_size - 1]]
+    best_population.append(list(best_parent))
+
+    return best_population
+
 
 
 # Wyciągnięcie samych współrzędnych
@@ -99,4 +199,20 @@ for i in range(population_size):
 
     quality = fitness(ch, distance_matrix)
     rating.append(quality)
+
+# Połączenie populacji z ich oceną
+merge_ratings = zip(rating, population)
+
+# Sortowanie rosnące po ocenach - im mniejsza tym lepiej
+sorted_ratings = sorted(merge_ratings)
+
+# Wybranie 50% najlepszych
+parent_size = population_size // 2
+parents = sorted_ratings[:parent_size]
+
+# Oddzielenie tras od ich ocen i konwersja do list
+parents_rating, parents_population = zip(*parents)
+parents_rating = list(parents_rating)
+parents_population = list(parents_population)
+
 
