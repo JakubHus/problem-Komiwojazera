@@ -182,7 +182,6 @@ def succession(rating, population, child_rating, child_population, population_si
     return best_population
 
 
-
 # Wyciągnięcie samych współrzędnych
 coords = np.array([(lat, lon) for _, lat, lon in cities])
 
@@ -200,19 +199,103 @@ for i in range(population_size):
     quality = fitness(ch, distance_matrix)
     rating.append(quality)
 
-# Połączenie populacji z ich oceną
-merge_ratings = zip(rating, population)
+# Zapis najlepszego rozwiązania początkowego
+best_id = np.argmin(rating)
+best_route = list(population[best_id])
+best_rating = rating[best_id]
 
-# Sortowanie rosnące po ocenach - im mniejsza tym lepiej
-sorted_ratings = sorted(merge_ratings)
+# Historia statystyk do wykresów
+history_best = [best_rating]
+history_mean = [np.mean(rating)]
+history_median = [np.median(rating)]
 
-# Wybranie 50% najlepszych
-parent_size = population_size // 2
-parents = sorted_ratings[:parent_size]
+# Licznik braku poprawy wyniku - do warunku stopu
+no_progress = 0
 
-# Oddzielenie tras od ich ocen i konwersja do list
-parents_rating, parents_population = zip(*parents)
-parents_rating = list(parents_rating)
-parents_population = list(parents_population)
+# GŁÓWNA PĘTLA PROGRAMU - ALGORYTM GENETYCZNY - PROBLEM KOMIWOJAŻERA
+for gen in range(max_generations):
+    # Połączenie populacji z ich oceną
+    merge_ratings = zip(rating, population)
+
+    # Sortowanie rosnące po ocenach - im mniejsza tym lepiej
+    sorted_ratings = sorted(merge_ratings)
+
+    # Wybranie 50% najlepszych
+    parent_size = population_size // 2
+    parents = sorted_ratings[:parent_size]
+
+    # Oddzielenie tras od ich ocen i konwersja do listy - pominięcie ratingów
+    _, parent_population = zip(*parents)
+    parent_population = list(parent_population)
+
+    child_population = []
+
+    while len(child_population) < population_size:
+
+        # Losowy wybór dwóch rodziców
+        parent1, parent2 = random.sample(parent_population, 2)
+
+        # Krzyżowanie - brak krzyżowania w wypadku niespełnionego warunku prawdopodobieństwa
+        if random.random() < p_crossing:
+            child = crossing(parent1, parent2)
+        else:
+            # Jeśli nie nastąpi krzyżowanie, to kopiujemy pierwszego rodzica
+            child = list(parent1)
+
+        # Mutacja
+        child = mutation(child, p_mutation)
+
+        # Dodanie dziecka do populacji potomków
+        child_population.append(child)
+
+    # Ocena potomków
+    child_rating = []
+
+    for child in child_population:
+        quality = fitness(child, distance_matrix)
+        child_rating.append(quality)
+
+    # Sukcesja
+    population = succession(rating, population, child_rating, child_population, population_size)
+
+    # Ocena nowej populacji
+    rating = []
+
+    for ch in population:
+        quality = fitness(ch, distance_matrix)
+        rating.append(quality)
+
+    # Aktualizacja najlepszego wyniku
+    # Indeks najlepszego wyniku funkcji jakości (rating)
+    current_best_id = np.argmin(rating)
+    current_best_rating = rating[current_best_id]
+
+    if current_best_rating < best_rating:
+        best_rating = current_best_rating
+        best_route = list(population[current_best_id])
+        no_progress = 0
+    else:
+        no_progress += 1
+
+    # Zebranie statystyk do wizualizacji
+    history_best.append(best_rating)
+    history_mean.append(np.mean(rating))
+    history_median.append(np.median(rating))
+
+    # Sprawdzenie warunku stopu
+    if no_progress >= stop_after:
+        print(f"Zatrzymano po {gen + 1} pokoleniach.")
+        break
+
+# WYNIKI KOŃCOWE
+print("Najlepszy koszt trasy: ", best_rating)
+print("najlepsza trasa - indeksy:")
+print(best_route)
+
+# Nazwy miast w kolejności odwiedzania
+best_city_names = [cities[i][0] for i in best_route]
+
+print("Najlepsza trasa - miasta:")
+print(best_city_names)
 
 
