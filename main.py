@@ -1,6 +1,8 @@
 import numpy as np
 from scipy.spatial.distance import cdist
 import random
+import matplotlib.pyplot as plt
+import geopandas as gpd
 
 # Miasta + ich współrzędne
 cities = [
@@ -208,6 +210,7 @@ best_rating = rating[best_id]
 history_best = [best_rating]
 history_mean = [np.mean(rating)]
 history_median = [np.median(rating)]
+history_worst = [np.max(rating)]
 
 # Licznik braku poprawy wyniku - do warunku stopu
 no_progress = 0
@@ -281,6 +284,7 @@ for gen in range(max_generations):
     history_best.append(best_rating)
     history_mean.append(np.mean(rating))
     history_median.append(np.median(rating))
+    history_worst.append(np.max(rating))
 
     # Sprawdzenie warunku stopu
     if no_progress >= stop_after:
@@ -299,3 +303,73 @@ print("Najlepsza trasa - miasta:")
 print(best_city_names)
 
 
+# WIZUALIZACJA
+
+# WYKRES - WIZUALIZACJA NAJLEPSZEJ TRASY
+# Współrzędne najelpszej trasy
+route_coords = coords[best_route]
+
+# Dodanie pierwszego miasta na koniec, aby domknąć trasę
+route_coords = np.vstack([route_coords, route_coords[0]])
+
+# Wczytanie granic państw i wyodrębnienie Polski
+world_border = gpd.read_file('https://naturalearth.s3.amazonaws.com/110m_cultural/ne_110m_admin_0_countries.zip')
+poland_border = world_border[world_border['ADMIN'] == 'Poland']
+
+# Dodanie konturu Polski na wykresie
+fig, ax = plt.subplots(figsize=(10, 10))
+poland_border.boundary.plot(ax=ax, linewidth=1.5)
+
+# Dodanie poszczególnych miast
+ax.scatter(coords[:, 1], coords[:, 0], s=30)
+
+# Dodanie linii trasy między miastami
+ax.plot(route_coords[:, 1], route_coords[:, 0], linewidth=1)
+
+# Dodanie nazw miast
+for name, lat, lon in cities:
+    ax.text(lon, lat, name, fontsize=6)
+
+# Opis i dopasowanie wykresu
+plt.title(f"Problem Komiwojażera - najlepsza trasa\n Koszt: {best_rating:.4f}")
+plt.xlabel("Długość geograficzna")
+plt.ylabel("Szerokość geograficzna")
+
+ax.set_xlim(14, 24.5)
+ax.set_ylim(49, 55)
+
+ax.set_aspect('equal')
+ax.grid(True)
+plt.show()
+
+# WYKRES - FUNKCJA JAKOŚCI
+# Rzeczywista liczba pokoleń w razie gdyby algorytm zatrzymał się wcześniej
+generations = range(len(history_best))
+
+# Tworzenie wykresu
+plt.figure(figsize=(10, 6))
+
+plt.plot(generations, history_best, label='Najlepszy wynik')
+plt.plot(generations, history_mean, label='Średnia')
+plt.plot(generations, history_median, label='Mediana')
+plt.plot(generations, history_worst, label="Najgorszy wynik")
+
+# Opis wykresu
+plt.xlabel('Numer pokolenia')
+plt.ylabel('Długość trasy')
+plt.title('Ewolucja funkcji jakości')
+plt.grid(True)
+plt.legend()
+plt.show()
+
+# Procentowa poprawa wyniku
+# Najlepsza funkcja jakości w populacji początkowej
+base_rating = history_best[0]
+
+# Najlepsza funkcja jakości overall
+final_best = history_best[-1]
+
+# Obliczenie poprawy funkcji jakości w procentach
+improve_percent = ((base_rating - final_best) / base_rating * 100)
+
+print(f"Wynik został poprawiony o {improve_percent}%")
